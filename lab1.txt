@@ -1,0 +1,208 @@
+SQL> ALTER SESSION SET "_ORACLE_SCRIPT"=true;
+
+Session altered.
+
+SQL> CREATE USER student  IDENTIFIED BY 1308;
+
+User created.
+
+SQL> GRANT CREATE SESSION, CREATE TABLE to student;
+
+Grant succeeded.
+
+SQL> GRANT UNLIMITED TABLESPACE TO student;
+
+Grant succeeded.
+
+SQL> connect student
+
+Connected.
+
+SQL> create table store_suppliers(
+  2  supplier_id NUMBER (5,0) NOT NULL,
+  3  supplier_name NVARCHAR2 (20) NOT NULL,
+  4  primary key (supplier_id));
+
+Table created.
+
+SQL> create table store_products(
+  2  product_id NUMBER (5,0) NOT NULL,
+  3  product_name NVARCHAR2 (20) NOT NULL,
+  4  short_description NVARCHAR2 (20),
+  5  product_price DECIMAL (19,4),
+  6  import_price DECIMAL (19,4),
+  7  supplier_id NUMBER (19,4),
+  8  primary key (product_id),
+  9  foreign key (supplier_id) references store_suppliers(supplier_id));
+
+Table created.
+
+SQL> create table store_product_reviews(
+  2  
+SQL> create table store_customers(
+  2  customers_id NUMBER (5,0) NOT NULL,
+  3  customers_name NVARCHAR2 (20) NOT NULL,
+  4  customers_birthday DATE,
+  5  primary key (customers_id));
+
+Table created.
+
+SQL> create table store_product_vouches(
+  2  product_id NUMBER (5,0) NOT NULL,
+  3  voucher_id NUMBER (5,0) NOT NULL,
+  4  primary key (voucher_id),
+  5  foreign key (product_id) references store_products(product_id));
+
+Table created.
+
+
+SQL> create table store_vouchers(
+  2  voucher_id NUMBER (5,0) NOT NULL,
+  3  voucher_name NVARCHAR2 (20) NOT NULL,
+  4  discount_amount FLOAT,
+  5  start_date DATE,
+  6  end_date DATE,
+  7  primary key (voucher_id));
+
+Table created.
+
+SQL> create table store_product_vouchers(
+  2  voucher_id NUMBER (5,0) NOT NULL,
+  3  product_id NUMBER (5,0) NOT NULL,
+  4  foreign key (voucher_id) references store_vouchers(voucher_id),
+  5  foreign key (product_id) references store_products(product_id));
+
+Table created.
+
+
+SQL> alter table store_customers
+  2  rename column customers_birthday to customer_birthday;
+
+Table altered.
+
+SQL> alter table store_customers
+  2  rename column customers_id to customer_id;
+
+Table altered.
+
+SQL> alter table store_customers
+  2  rename column customers_name to customer_name;
+
+Table altered.
+
+SQL> create table store_customer_vouchers(
+  2  customer_id NUMBER (5,0) NOT NULL,
+  3  voucher_id NUMBER (5,0) NOT NULL,
+  4  foreign key (customer_id) references store_customers(customer_id),
+  5  foreign key (voucher_id) references store_vouchers(voucher_id));
+
+Table created.
+
+SQL> insert all
+  2  into store_suppliers values (2,'Roses')
+  3  into store_suppliers values (1,'James')
+  4  select * from dual;
+
+2 rows created.
+
+SQL> insert all
+  2  into store_products(product_id,product_name,product_price,supplier_id) values (1,'Cup',100,1)
+  3  into store_products(product_id,product_name,product_price,supplier_id) values (2,'Pen',10,2)
+  4  into store_products(product_id,product_name,product_price,supplier_id) values (3,'Book',15,2)
+  5  select * from dual;
+
+3 rows created.
+
+SQL> insert all
+  2  into store_customers(customer_id,customer_name) values (1,'Sasha')
+  3  into store_customers(customer_id,customer_name) values (2,'Harry')
+  4  select * from dual;
+
+2 rows created.
+
+SQL> insert all
+  2  into store_vouchers(voucher_id,voucher_name,discount_amount) values (1,'Holiday Sale',0.2)
+  3  into store_vouchers(voucher_id,voucher_name,discount_amount) values (2,'Special Sale',0.4)
+  4  select * from dual;
+
+2 rows created.
+
+SQL> insert all
+  2  into store_customer_vouchers values (1,1)
+  3  into store_customer_vouchers values (2,2)
+  4  select * from dual;
+
+2 rows created.
+
+SQL> insert all
+  2  into store_product_vouchers values (2,1)
+  3  into store_product_vouchers values (1,1)
+  4  select * from dual;
+
+2 rows created.
+
+SQL> select * from store_products;
+
+PRODUCT_ID PRODUCT_NAME         SHORT_DESCRIPTION    PRODUCT_PRICE IMPORT_PRICE 
+---------- -------------------- -------------------- ------------- ------------ 
+SUPPLIER_ID                                                                     
+-----------                                                                     
+         1 Cup                                                 100              
+          1                                                                     
+                                                                                
+         2 Pen                                                  10              
+          2                                                                     
+                                                                                
+         3 Book                                                 15              
+          2                                                                     
+                                                                                
+
+SQL> select * from store_suppliers;
+
+SUPPLIER_ID SUPPLIER_NAME                                                       
+----------- --------------------                                                
+          2 Roses                                                               
+          1 James                                                               
+
+SQL> select * from store_customers;
+
+CUSTOMER_ID CUSTOMER_NAME        CUSTOMER_                                      
+----------- -------------------- ---------                                      
+          1 Sasha                                                               
+          2 Harry                                                               
+
+SQL> select * from store_vouchers;
+
+VOUCHER_ID VOUCHER_NAME         DISCOUNT_AMOUNT START_DAT END_DATE              
+---------- -------------------- --------------- --------- ---------             
+         1 Holiday Sale                      .2                                 
+         2 Special Sale                      .4                                 
+
+SQL> select * from store_product_vouchers;
+
+VOUCHER_ID PRODUCT_ID                                                           
+---------- ----------                                                           
+         2          1                                                           
+         1          1                                                           
+
+SQL> select * from store_customer_vouchers;
+
+CUSTOMER_ID VOUCHER_ID                                                          
+----------- ----------                                                          
+          1          1                                                          
+          2          2                                                          
+
+SQL> alter table store_customers
+  2  rename column customer_birthday to cus_birt
+  3  ;
+
+Table altered.
+
+SQL> select * from store_customers;
+
+CUSTOMER_ID CUSTOMER_NAME        CUS_BIRT                                       
+----------- -------------------- ---------                                      
+          1 Sasha                                                               
+          2 Harry                                                               
+
+SQL> spool off
