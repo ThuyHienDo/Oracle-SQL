@@ -1,0 +1,6 @@
+voucher_id,voucher_name,discount_amount,start_date,end_date
+1,BacktoSchool,0.4,25-AUG-21,05-SEP-21
+2,Black Friday,0.7,01-NOV-21,10-NOV-21
+3,Spring,0.2,15-APR-21,25-APR-21
+4,Valentine Day,0.35,12-FEB-22,15-FEB-22
+5,Happy Wenkend,0.15,03-APR-21,04-APR-21

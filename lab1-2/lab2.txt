@@ -1,0 +1,156 @@
+SQL> select product_name from store_products;
+
+PRODUCT_NA                                                                      
+----------                                                                      
+Book                                                                            
+Pen                                                                             
+Mirror                                                                          
+Ruler                                                                           
+Caculator                                                                       
+Scissors                                                                        
+Clock                                                                           
+Backpack                                                                        
+Tissue                                                                          
+Cup                                                                             
+Mack                                                                            
+
+11 rows selected.
+
+SQL> select cus_birt from store_customers;
+
+CUS_BIRT                                                                        
+---------                                                                       
+21-SEP-70                                                                       
+17-APR-98                                                                       
+04-OCT-65                                                                       
+21-DEC-78                                                                       
+21-NOV-85                                                                       
+20-MAY-97                                                                       
+31-OCT-80                                                                       
+13-FEB-70                                                                       
+19-JAN-98                                                                       
+17-SEP-82                                                                       
+
+10 rows selected.
+
+SQL> select cus_n from store_customers where (cus_birt='31-OCT-80');
+
+CUS_N                                                                           
+----------                                                                      
+Zac                                                                             
+
+SQL> select voucher_name from store_vouchers where (discount_amount>0.2);
+
+VOUCHER_NAME                                                                    
+---------------                                                                 
+BacktoSchool                                                                    
+Black Friday                                                                    
+Valentine Day                                                                   
+
+SQL> select cus_n from store_customers order by cus_birt;
+
+CUS_N                                                                           
+----------                                                                      
+Harry                                                                           
+Peter                                                                           
+Sasha                                                                           
+Jamie                                                                           
+Zac                                                                             
+Lee                                                                             
+William                                                                         
+Valentina                                                                       
+Mai                                                                             
+Mike                                                                            
+
+10 rows selected.
+
+SQL> select voucher_name from store_vouchers order by discount_amounts;
+select voucher_name from store_vouchers order by discount_amounts
+                                                 *
+ERROR at line 1:
+ORA-00904: "DISCOUNT_AMOUNTS": invalid identifier 
+
+
+SQL> select voucher_name from store_vouchers order by discount_amount desc;
+
+VOUCHER_NAME                                                                    
+---------------                                                                 
+Black Friday                                                                    
+BacktoSchool                                                                    
+Valentine Day                                                                   
+Spring                                                                          
+Happy Wenkend                                                                   
+
+
+SQL> select product_name, (product_price*0.1) as tax from store_products;
+
+PRODUCT_NA        TAX                                                           
+---------- ----------                                                           
+Book                5                                                           
+Pen                .5                                                           
+Mirror              6                                                           
+Ruler              .7                                                           
+Caculator          20                                                           
+Scissors            2                                                           
+Clock              10                                                           
+Backpack           15                                                           
+Tissue              1                                                           
+Cup                 6                                                           
+Mack              1.2                                                           
+
+11 rows selected.
+
+SQL> select product_id,min(supply_price) from supply_price group by product_id;
+
+PRODUCT_ID MIN(SUPPLY_PRICE)                                                    
+---------- -----------------                                                    
+         6                10                                                    
+         1                15                                                    
+         7                80                                                    
+         2                 3                                                    
+         8               100                                                    
+        11                11                                                    
+         4                 4                                                    
+         5               150                                                    
+        10                42                                                    
+         3                30                                                    
+         9                 7                                                    
+
+11 rows selected.
+
+
+SQL> select unique store_customer_vouchers.customer_id,store_customers.cus_n
+  2  from store_customer_vouchers,store_customers
+  3  where store_customer_vouchers.customer_id=store_customers.customer_id;
+
+CUSTOMER_ID CUS_N                                                               
+----------- ----------                                                          
+          4 Jamie                                                               
+          7 Zac                                                                 
+          2 Mike                                                                
+          9 Mai                                                                 
+          1 Sasha                                                               
+          6 Valentina                                                           
+
+6 rows selected.
+
+SQL> select (3+5) from dual;
+
+     (3+5)                                                                      
+----------                                                                      
+         8                                                                      
+
+SQL> select (round(1782,-2)) from dual;
+
+(ROUND(1782,-2))                                                                
+----------------                                                                
+            1800 
+
+SQL> SELECT CAST (TO_CHAR (LAST_DAY (SYSDATE), 'dd') AS INT) number_of_days
+  2    FROM DUAL;
+
+NUMBER_OF_DAYS
+--------------
+            30                                                               
+
+SQL> spool off
