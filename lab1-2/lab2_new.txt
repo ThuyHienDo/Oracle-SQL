@@ -1,0 +1,19 @@
+SQL> SELECT EXTRACT(DAY FROM LAST_DAY(SYSDATE)) num_of_days FROM dual;
+
+NUM_OF_DAYS                                                                     
+-----------                                                                     
+         30                                                                     
+
+SQL> SELECT EXTRACT (month FROM start_date) "Month",
+  2  (SUM(discount_amount)/COUNT(start_date)) as average_coupon
+  3  FROM store_vouchers
+  4  GROUP BY EXTRACT(month FROM start_date);
+
+     Month AVERAGE_COUPON                                                       
+---------- --------------                                                       
+         8             .4                                                       
+        11             .7                                                       
+         2            .35                                                       
+         4           .175                                                       
+
+SQL> spool off
