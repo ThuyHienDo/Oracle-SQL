@@ -1,0 +1,27 @@
+SQL> select*from store_vouchers
+  2  ;
+
+VOUCHER_ID VOUCHER_NAME    DISCOUNT_AMOUNT START_DAT END_DATE                   
+---------- --------------- --------------- --------- ---------                  
+         6 Hello Winter                 .1 20-NOV-22 25-NOV-22                  
+         1 BacktoSchool                 .4 25-AUG-21 05-SEP-21                  
+         2 Black Friday                 .7 01-NOV-21 10-NOV-21                  
+         3 Spring                       .2 15-APR-21 25-APR-21                  
+         4 Valentine Day               .35 12-FEB-22 15-FEB-22                  
+         5 Happy Wenkend               .15 03-APR-21 04-APR-21                  
+
+6 rows selected.
+
+SQL> SELECT EXTRACT (month FROM start_date) "Month",
+  2  (SUM(discount_amount)/COUNT(start_date)) as average_coupon
+  3  from store_vouchers
+  4  GROUP BY EXTRACT(month FROM start_date);
+
+     Month AVERAGE_COUPON                                                       
+---------- --------------                                                       
+        11             .4                                                       
+         8             .4                                                       
+         2            .35                                                       
+         4           .175                                                       
+
+SQL> spool off
