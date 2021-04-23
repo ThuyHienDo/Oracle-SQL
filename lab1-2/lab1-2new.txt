@@ -1,0 +1,18 @@
+SQL> SELECT
+  2  EXTRACT (YEAR FROM start_date) year,
+  3  EXTRACT (MONTH FROM start_date) month,
+  4  (SUM(discount_amount)/COUNT(start_date)) as average_coupon
+  5  FROM store_vouchers
+  6  GROUP BY
+  7  EXTRACT (YEAR FROM start_date),
+  8  EXTRACT (MONTH FROM start_date);
+
+      YEAR      MONTH AVERAGE_COUPON                                            
+---------- ---------- --------------                                            
+      2021          4           .175                                            
+      2022         11             .1                                            
+      2021          8             .4                                            
+      2021         11             .7                                            
+      2022          2            .35                                            
+
+SQL> spool off
