@@ -1,0 +1,59 @@
+На защиту: что значит ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW?
+
+На защиту: выведите для каждого клиента (customer_name):
+    а. Скидку в процентах по самому лучшему из купонов, действующих на в данный момент;
+
+SELECT store_customers.cus_n,
+MAX(store_vouchers.discount_amount) as highest_discount
+FROM store_customers
+INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+WHERE store_vouchers.start_date = '01-MAY-21'
+GROUP BY store_customers.cus_n;
+
+    б. Общее колическтво действующих купонов у него на руках;
+
+SELECT store_customers.cus_n,
+COUNT(store_customer_vouchers.voucher_id) as NUM_OF_VOUCHERs
+FROM store_customers
+INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+GROUP BY store_customers.cus_n;
+
+    в. Стоимость самого дорогого товара с учётом скидки по купону;
+ WITH t1 AS (SELECT store_customers.cus_n,
+(MAX(store_products.product_price)-(MAX(store_vouchers.discount_amount)*MAX(store_products.product_price))) as w_dis,
+MAX(store_products.product_price) as org_pr
+FROM store_customers
+INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+GROUP BY store_customers.cus_n),
+t3 AS (SELECT product_name,product_price FROM store_products)
+SELECT t1.cus_n,t3.product_name,t1.w_dis
+FROM t1  INNER JOIN t3 ON t1.org_pr=t3.product_price;
+
+    г. Разность между ценой с учётом скидки и полной ценой.
+WITH t1 AS (SELECT store_customers.cus_n,
+(MAX(store_products.product_price)-(MAX(store_vouchers.discount_amount)*MAX(store_products.product_price))) as w_dis
+FROM store_customers
+INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+GROUP BY store_customers.cus_n),
+t2 AS (SELECT store_customers.cus_n,
+MAX(store_products.product_price) as org_pr
+FROM store_customers
+INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+GROUP BY store_customers.cus_n),
+t3 AS (SELECT product_name,product_price FROM store_products)
+SELECT t1.cus_n,t3.product_name,t1.w_dis,t2.org_pr,
+(t2.org_pr-t1.w_dis) as diff
+FROM t1
+INNER JOIN t2 ON t1.cus_n=t2.cus_n
+INNER JOIN t3 ON t2.org_pr=t3.product_price;

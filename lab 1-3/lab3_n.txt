@@ -1,0 +1,170 @@
+SQL> SELECT*FROM store_customers;
+
+CUSTOMER_ID CUS_N      CUS_BIRT   FRIEND_ID                                     
+----------- ---------- --------- ----------                                     
+          1 Sasha      21-SEP-70                                                
+          2 Mike       17-APR-98          1                                     
+          3 Harry      04-OCT-65          1                                     
+          4 Jamie      21-DEC-78          2                                     
+          5 William    21-NOV-85          2                                     
+          6 Valentina  20-MAY-97          8                                     
+          7 Zac        31-OCT-80          6                                     
+          8 Peter      13-FEB-70          9                                     
+          9 Mai        19-JAN-98                                                
+         10 Lee        17-SEP-82          8                                     
+
+10 rows selected.
+
+
+SQL> SELECT level, customer_id, cus_n, Prior cus_n friend_name
+  2  FROM store_customers
+  3  CONNECT BY PRIOR customer_id=friend_id
+  4  START WITH friend_id IS NULL;
+
+     LEVEL CUSTOMER_ID CUS_N      FRIEND_NAM                                    
+---------- ----------- ---------- ----------                                    
+         1           1 Sasha                                                    
+         2           2 Mike       Sasha                                         
+         3           4 Jamie      Mike                                          
+         3           5 William    Mike                                          
+         2           3 Harry      Sasha                                         
+         1           9 Mai                                                      
+         2           8 Peter      Mai                                           
+         3           6 Valentina  Peter                                         
+         4           7 Zac        Valentina                                     
+         3          10 Lee        Peter                                         
+
+10 rows selected.
+
+
+SQL> SELECT*FROM store_vouchers;
+
+VOUCHER_ID VOUCHER_NAME    DISCOUNT_AMOUNT START_DAT END_DATE                   
+---------- --------------- --------------- --------- ---------                  
+         6 Hello Winter                 .1 20-NOV-22 25-NOV-22                  
+         7 LoyalCustomer               .75 01-MAY-21 10-MAY-21                  
+         1 BacktoSchool                 .4 25-AUG-21 05-SEP-21                  
+         2 Black Friday                 .7 01-NOV-21 10-NOV-21                  
+         3 Spring                       .2 15-APR-21 25-APR-21                  
+         4 Valentine Day               .35 12-FEB-22 15-FEB-22                  
+         5 Happy Wenkend               .15 03-APR-21 04-APR-21                  
+
+7 rows selected.
+
+SQL> SELECT*FROM store_products;
+
+PRODUCT_ID PRODUCT_NA SHORT_DESC PRODUCT_PRICE                                  
+---------- ---------- ---------- -------------                                  
+         1 Book       Roman                 50                                  
+         2 Pen        Black                  5                                  
+         3 Mirror     Size8x15cm            60                                  
+         4 Ruler      Size 20 cm             7                                  
+         5 Caculator  Casio                200                                  
+         6 Scissors   Blue                  20                                  
+         7 Clock      White                100                                  
+         8 Backpack   Pink                 150                                  
+         9 Tissue     Fancy                 10                                  
+        10 Cup        Size 150ml            60                                  
+        11 Mack       3-Layers              12                                  
+
+11 rows selected.
+
+SQL> SELECT store_customers.cus_n,
+  2  MAX(store_vouchers.discount_amount) as highest_discount
+  3  FROM store_customers
+  4  INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+  5  INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+  6  WHERE store_vouchers.start_date = '01-MAY-21'
+  7  GROUP BY store_customers.cus_n;
+
+CUS_N      HIGHEST_DISCOUNT                                                     
+---------- ----------------                                                     
+Mai                     .75                                                     
+Sasha                   .75                                                     
+
+SQL> SELECT store_customers.cus_n,
+  2  COUNT(store_customer_vouchers.voucher_id) as NUM_OF_VOUCHERs
+  3  FROM store_customers
+  4  INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+  5  INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+  6  GROUP BY store_customers.cus_n;
+
+CUS_N      NUM_OF_VOUCHERS                                                      
+---------- ---------------                                                      
+Lee                      1                                                      
+Harry                    2                                                      
+William                  1                                                      
+Jamie                    1                                                      
+Sasha                    3                                                      
+Mai                      3                                                      
+Valentina                1                                                      
+Mike                     2                                                      
+Peter                    2                                                      
+
+9 rows selected.
+
+SQL> WITH t1 AS (SELECT store_customers.cus_n,
+  2  (MAX(store_products.product_price)-(MAX(store_vouchers.discount_amount)*MAX(store_products.product_price))) as w_dis,
+  3  MAX(store_products.product_price) as org_pr
+  4  FROM store_customers
+  5  INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+  6  INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+  7  INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+  8  INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+  9  GROUP BY store_customers.cus_n),
+ 10  t3 AS (SELECT product_name,product_price FROM store_products)
+ 11  SELECT t1.cus_n,t3.product_name,t1.w_dis
+ 12  FROM t1  INNER JOIN t3 ON t1.org_pr=t3.product_price;
+
+CUS_N      PRODUCT_NA      W_DIS                                                
+---------- ---------- ----------                                                
+Lee        Book               40                                                
+William    Book             32.5                                                
+Harry      Caculator          60                                                
+Jamie      Caculator          60                                                
+Mai        Caculator          50                                                
+Sasha      Caculator          50                                                
+Valentina  Caculator         120                                                
+Mike       Caculator         120                                                
+Peter      Caculator         120                                                
+
+9 rows selected.
+
+SQL> WITH t1 AS (SELECT store_customers.cus_n,
+  2  (MAX(store_products.product_price)-(MAX(store_vouchers.discount_amount)*MAX(store_products.product_price))) as w_dis
+  3  FROM store_customers
+  4  INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+  5  INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+  6  INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+  7  INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+  8  GROUP BY store_customers.cus_n),
+  9  t2 AS (SELECT store_customers.cus_n,
+ 10  MAX(store_products.product_price) as org_pr
+ 11  FROM store_customers
+ 12  INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+ 13  INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+ 14  INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+ 15  INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+ 16  GROUP BY store_customers.cus_n),
+ 17  t3 AS (SELECT product_name,product_price FROM store_products)
+ 18  SELECT t1.cus_n,t3.product_name,t1.w_dis,t2.org_pr,
+ 19  (t2.org_pr-t1.w_dis) as diff
+ 20  FROM t1
+ 21  INNER JOIN t2 ON t1.cus_n=t2.cus_n
+ 22  INNER JOIN t3 ON t2.org_pr=t3.product_price;
+
+CUS_N      PRODUCT_NA      W_DIS     ORG_PR       DIFF                          
+---------- ---------- ---------- ---------- ----------                          
+Lee        Book               40         50         10                          
+William    Book             32.5         50       17.5                          
+Harry      Caculator          60        200        140                          
+Jamie      Caculator          60        200        140                          
+Mai        Caculator          50        200        150                          
+Sasha      Caculator          50        200        150                          
+Valentina  Caculator         120        200         80                          
+Mike       Caculator         120        200         80                          
+Peter      Caculator         120        200         80                          
+
+9 rows selected.
+
+SQL> spool off

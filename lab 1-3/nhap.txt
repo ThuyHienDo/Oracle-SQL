@@ -1,0 +1,128 @@
+SQL> SELECT store_products.product_name,
+(MAX(store_products.product_price)*MAX(store_vouchers.discount_amount)) as w_dis
+FROM store_products
+INNER JOIN store_product_vouchers ON store_product_vouchers.product_id=store_products.product_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_product_vouchers.voucher_id
+GROUP BY store_products.product_name;
+
+PRODUCT_NA      W_DIS
+---------- ----------
+Ruler             2.8
+Mack              2.4
+Mirror             42
+Caculator         150
+Backpack        112.5
+Pen                 2
+Clock              75
+Scissors            8
+Tissue            3.5
+Book               20
+
+SQL> SELECT
+  2  (MAX(store_products.product_price)*MAX(store_vouchers.discount_amount)) as w_dis
+  3  FROM store_products
+  4  INNER JOIN store_product_vouchers ON store_product_vouchers.product_id=store_products.product_id
+  5  INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_product_vouchers.voucher_id
+  6  GROUP BY store_products.product_name;
+
+     W_DIS
+----------
+       2.8
+       2.4
+        42
+       150
+     112.5
+         2
+        75
+         8
+       3.5
+        20
+
+10 rows selected.
+
+SQL> SELECT
+  2  (MAX(store_vouchers.discount_amount)*MAX(store_products.product_price)) as w_dis
+  3  FROM store_vouchers
+  4  INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+  5  INNER JOIN store_product_vouchers ON store_product_vouchers.product_id=store_products.product_id
+  6
+SQL> SELECT
+  2  (MAX(store_vouchers.discount_amount)*MAX(store_products.product_price)) as w_dis
+  3  FROM store_vouchers
+  4  INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+  5  INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+  6  GROUP BY store_vouchers.voucher_name;
+
+     W_DIS
+----------
+       1.8
+        10
+      17.5
+       150
+        80
+       140
+
+6 rows selected.
+
+SQL> SELECT store_vouchers.voucher_name,
+  2  (MAX(store_vouchers.discount_amount)*MAX(store_products.product_price)) as w_dis
+  3  FROM store_vouchers
+  4  INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+  5  INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+  6  GROUP BY store_vouchers.voucher_name;
+
+VOUCHER_NAME         W_DIS
+--------------- ----------
+Happy Wenkend          1.8
+Spring                  10
+Valentine Day         17.5
+LoyalCustomer          150
+BacktoSchool            80
+Black Friday           140
+
+6 rows selected.
+
+SELECT store_customers.cus_n,
+MAX(store_vouchers.discount_amount)*(MAX(store_products.product_price)) as w_dis
+FROM store_customers
+INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+GROUP BY store_customers.cus_n;
+
+WITH t1 AS (SELECT store_customers.cus_n,
+MAX(store_vouchers.discount_amount)*(MAX(store_products.product_price)) as w_dis
+FROM store_customers
+INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+GROUP BY store_customers.cus_n),
+t2 AS (SELECT store_products.product_name,
+(MAX(store_products.product_price)*MAX(store_vouchers.discount_amount)) as w_dis
+FROM store_products
+INNER JOIN store_product_vouchers ON store_product_vouchers.product_id=store_products.product_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_product_vouchers.voucher_id
+GROUP BY store_products.product_name)
+SELECT*FROM t1,t2 WHERE t1.w_dis=t2.w_dis;
+
+WITH t1 AS (SELECT store_customers.cus_n,
+(MAX(store_products.product_price)-(MAX(store_vouchers.discount_amount)*MAX(store_products.product_price))) as w_dis
+FROM store_customers
+INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+GROUP BY store_customers.cus_n),
+t2 AS (SELECT store_customers.cus_n,
+MAX(store_products.product_price) as org_pr
+FROM store_customers
+INNER JOIN store_customer_vouchers ON store_customer_vouchers.customer_id=store_customers.customer_id
+INNER JOIN store_vouchers ON store_vouchers.voucher_id=store_customer_vouchers.voucher_id
+INNER JOIN store_product_vouchers ON store_product_vouchers.voucher_id=store_vouchers.voucher_id
+INNER JOIN store_products ON store_products.product_id=store_product_vouchers.product_id
+GROUP BY store_customers.cus_n)
+SELECT t1.cus_n,t1.w_dis,t2.org_pr,
+(t2.org_pr-t1.w_dis) as diff
+FROM t1 INNER JOIN t2 ON t1.cus_n=t2.cus_n;
