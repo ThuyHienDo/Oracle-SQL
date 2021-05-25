@@ -1,0 +1,1113 @@
+
+SQL> MERGE INTO store_import_products p1
+  2  USING (select product_id, product_name, product_price from store_products) p2
+  3  ON (p2.product_id=p1.product_id)
+  4  WHEN MATCHED THEN
+  5  UPDATE SET p1.product_name=p2.product_name, p1.product_price=p2.product_price
+  6  WHEN NOT MATCHED THEN
+  7  INSERT(product_id,product_name,product_price) VALUES(p2.product_id,p2.product_name,p2.product_price);
+
+11 rows merged.
+
+
+SQL> SELECT*FROM store_import_products;
+
+PRODUCT_ID PRODUCT_NA SHORT_DESC PRODUCT_PRICE                                  
+---------- ---------- ---------- -------------                                  
+         1 Book                             50                                  
+         7 Clock                           100                                  
+        10 Cup                              60                                  
+        12 Hat                              30                                  
+        13 Shirt                            45                                  
+        14 Dress                            70                                  
+         2 Pen                               5                                  
+         3 Mirror                           60                                  
+         4 Ruler                             7                                  
+         5 Caculator                       200                                  
+         6 Scissors                         20                                  
+
+PRODUCT_ID PRODUCT_NA SHORT_DESC PRODUCT_PRICE                                  
+---------- ---------- ---------- -------------                                  
+         8 Backpack                        150                                  
+         9 Tissue                           10                                  
+        11 Mack                             12                                  
+
+14 rows selected.
+
+
+SQL> SELECT
+  2  EXTRACT (YEAR FROM start_date) year,
+  3  EXTRACT (MONTH FROM start_date) month,
+  4  (SUM(discount_amount)/COUNT(start_date)) as average_coupon
+  5  FROM store_vouchers
+  6  GROUP BY
+  7  EXTRACT (YEAR FROM start_date),
+  8  EXTRACT (MONTH FROM start_date);
+
+      YEAR      MONTH AVERAGE_COUPON                                            
+---------- ---------- --------------                                            
+      2021          4           .175                                            
+      2022         11             .1                                            
+      2021          8             .4                                            
+      2021         11             .7                                            
+      2022          2            .35                                            
+      2021          5            .75                                            
+
+6 rows selected.
+
+SQL> SELECT
+  2  EXTRACT (YEAR FROM start_date) year,
+  3  (SUM(discount_amount)/COUNT(start_date)) as average_coupon
+  4  FROM store_vouchers
+  5  GROUP BY
+  6  EXTRACT (YEAR FROM start_date);
+
+      YEAR AVERAGE_COUPON                                                       
+---------- --------------                                                       
+      2021            .44                                                       
+      2022           .225                                                       
+
+
+SQL> SELECT * FROM (
+  2  SELECT
+  3  EXTRACT (YEAR FROM start_date) year,
+  4  EXTRACT (MONTH FROM start_date) month,
+  5  (SUM(discount_amount)/COUNT(start_date)) as average_coupon
+  6  FROM store_vouchers
+  7  GROUP BY
+  8  EXTRACT (YEAR FROM start_date),
+  9  EXTRACT (MONTH FROM start_date)) PIVOT (SUM(average_coupon) for month
+ 10  IN ('4','11','8','2','5'));
+
+      YEAR        '4'       '11'        '8'        '2'        '5'               
+---------- ---------- ---------- ---------- ---------- ----------               
+      2021       .175         .7         .4                   .75               
+      2022                    .1                   .35                          
+
+SQL> select product_id,product_name,product_price from store_import_products;
+
+PRODUCT_ID PRODUCT_NA PRODUCT_PRICE                                             
+---------- ---------- -------------                                             
+         1 Book                  50                                             
+         7 Clock                100                                             
+        10 Cup                   60                                             
+        12 Hat                   30                                             
+        13 Shirt                 45                                             
+        14 Dress                 70                                             
+         2 Pen                    5                                             
+         3 Mirror                60                                             
+         4 Ruler                  7                                             
+         5 Caculator            200                                             
+         6 Scissors              20                                             
+
+PRODUCT_ID PRODUCT_NA PRODUCT_PRICE                                             
+---------- ---------- -------------                                             
+         8 Backpack             150                                             
+         9 Tissue                10                                             
+        11 Mack                  12                                             
+
+14 rows selected.
+
+SQL> CREATE TABLE order_product(
+  2  product_id NUMBER (5,0) NOT NULL,
+  3  customer_id NUMBER (5,0) NOT NULL,
+  4  supplier_id NUMBER (5,0) NOT NULL,
+  5  quantity NUMBER (5,0),
+  6  foreign key (supplier_id) references store_suppliers(supplier_id),
+  7  foreign key (product_id) references store_products(product_id),
+  8  foreign key (customer_id) references store_customers(customer_id));
+
+Table created.
+
+SQL> insert all
+  2  into order_product values (1,1,1,3)
+  3  into order_product values (1,2,6,4)
+  4  into order_product values (5,2,2,10)
+  5  into order_product values (7,4,1,5)
+  6  into order_product values (10,7,1,20)
+  7  select*from dual;
+
+5 rows created.
+
+SQL> CREATE OR REPLACE ATTRIBUTE DIMENSION sup_dim
+  2  DIMENSION TYPE STANDARD
+  3  USING store_suppliers
+  4  ATTRIBUTES (supplier_id, city, country)
+  5  LEVEL id
+  6  KEY supplier_id
+  7  DETERMINES (city)
+  8  LEVEL city
+  9  KEY city
+ 10  DETERMINES (country)
+ 11  LEVEL country
+ 12  KEY country;
+
+Attribute dimension created.
+
+SQL> connect thuyhien
+Connected.
+SQL> CREATE OR REPLACE HIERARCHY sup_hier
+  2  USING sup_dim
+  3  (id CHILD OF
+  4  city CHILD OF
+  5  country);
+
+Hierarchy created.
+
+SQL> SELECT column_name from ALL_HIER_COLUMNS WHERE HIER_NAME = 'SUP_HIER';
+
+COLUMN_NAME                                                                     
+------------------------------                                                  
+CITY                                                                            
+COUNTRY                                                                         
+DEPTH                                                                           
+HIER_ORDER                                                                      
+IS_LEAF                                                                         
+LEVEL_NAME                                                                      
+MEMBER_CAPTION                                                                  
+MEMBER_DESCRIPTION                                                              
+MEMBER_NAME                                                                     
+MEMBER_UNIQUE_NAME                                                              
+PARENT_LEVEL_NAME                                                               
+
+COLUMN_NAME                                                                     
+------------------------------                                                  
+PARENT_UNIQUE_NAME                                                              
+SUPPLIER_ID                                                                     
+
+13 rows selected.
+
+SQL> CREATE OR REPLACE ANALYTIC VIEW order_product_av
+  2  USING order_product
+  3  DIMENSION BY (sup_dim
+  4  KEY supplier_id REFERENCES supplier_id
+  5  HIERARCHIES (
+  6  sup_hier DEFAULT))
+  7  MEASURES
+  8  (quantity FACT quantity)
+  9  DEFAULT MEASURE QUANTITY;
+
+Analytic view created.
+
+SQL> SELECT * FROM order_product_av HIERARCHIES (sup_hier)
+  2  ORDER BY sup_hier.hier_order;
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+ALL                                                                             
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[ALL].[ALL]                                                                     
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+    ALL              0          0          0                                    
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+        42                                                                      
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                            America                                             
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+America                                                                         
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[COUNTRY].&[America]                                                            
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+    COUNTRY          1          1          0 ALL                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[ALL].[ALL]                                                                     
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+         4                                                                      
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+            LA              America                                             
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+LA                                                                              
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[CITY].&[LA]                                                                    
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+    CITY             2          2          0 COUNTRY                            
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[COUNTRY].&[America]                                                            
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+         4                                                                      
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+          6 LA              America                                             
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+6                                                                               
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[ID].&[6]                                                                       
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+    ID               3          3          1 CITY                               
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[CITY].&[LA]                                                                    
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+         4                                                                      
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                            Russia                                              
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+Russia                                                                          
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[COUNTRY].&[Russia]                                                             
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+    COUNTRY         10          1          0 ALL                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[ALL].[ALL]                                                                     
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+        38                                                                      
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+            Kazan           Russia                                              
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+Kazan                                                                           
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[CITY].&[Kazan]                                                                 
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+    CITY            11          2          0 COUNTRY                            
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[COUNTRY].&[Russia]                                                             
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+        10                                                                      
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+          2 Kazan           Russia                                              
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+2                                                                               
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[ID].&[2]                                                                       
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+    ID              12          3          1 CITY                               
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[CITY].&[Kazan]                                                                 
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+        10                                                                      
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+            Moscow          Russia                                              
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+Moscow                                                                          
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[CITY].&[Moscow]                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+    CITY            13          2          0 COUNTRY                            
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[COUNTRY].&[Russia]                                                             
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+        28                                                                      
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+          1 Moscow          Russia                                              
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+1                                                                               
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[ID].&[1]                                                                       
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+    ID              14          3          1 CITY                               
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+[CITY].&[Moscow]                                                                
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+        28                                                                      
+
+SUPPLIER_ID CITY            COUNTRY                                             
+----------- --------------- ---------------                                     
+MEMBER_NAME                                                                     
+--------------------------------------------------------------------------------
+MEMBER_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+M M LEVEL_N HIER_ORDER      DEPTH    IS_LEAF PARENT_                            
+- - ------- ---------- ---------- ---------- -------                            
+PARENT_UNIQUE_NAME                                                              
+--------------------------------------------------------------------------------
+  QUANTITY                                                                      
+----------                                                                      
+                                                                                
+
+9 rows selected.
+
+SQL> SELECT city, quantity
+  2  FROM order_product_av
+  3  WHERE sup_hier.level_name = 'CITY';
+
+CITY              QUANTITY                                                      
+--------------- ----------                                                      
+Kazan                   10                                                      
+LA                       4                                                      
+Moscow                  28                                                      
+
+SQL> select*from order_product;
+
+PRODUCT_ID CUSTOMER_ID SUPPLIER_ID   QUANTITY                                   
+---------- ----------- ----------- ----------                                   
+         1           1           1          3                                   
+         1           2           6          4                                   
+         5           2           2         10                                   
+         7           4           1          5                                   
+        10           7           1         20                                   
+
+SQL> select*from store_suppliers;
+
+SUPPLIER_ID SUPPLIER_N CITY            COUNTRY                                  
+----------- ---------- --------------- ---------------                          
+          1 James      Moscow          Russia                                   
+          2 Roses      Kazan           Russia                                   
+          3 Sasha      Rome            Italy                                    
+          4 Hung       Hanoi           Vietnam                                  
+          5 Amie       Paris           France                                   
+          6 Dennis     LA              America                                  
+          7 Jenny      Sochi           Russia                                   
+
+7 rows selected.
+
+SQL> spool off
